@@ -1,11 +1,19 @@
 """Dataset loading."""
 
 import random
+from typing import TypedDict
 
 from datasets import load_dataset
 
 
-def load_banking77_subset(k=20, seed=0):
+class Example(TypedDict):
+    text: str
+    label: int
+
+
+def load_banking77_subset(
+    k: int = 20, seed: int = 0
+) -> tuple[list[Example], list[Example], list[str]]:
     """Load Banking77 restricted to k intents.
 
     Options are labelled with single letters, which limits a question to 26
@@ -17,7 +25,7 @@ def load_banking77_subset(k=20, seed=0):
         seed: Seed used to choose the intents.
 
     Returns:
-        train: List of {"text": str, "label": int}. Used for prompt design and
+        train: List of Example. Used for prompt design and
             calibration; no model is trained on it.
         test: Same format. Used for final numbers only.
         options: Intent names in label order, so options[label] is the name.
@@ -31,7 +39,7 @@ def load_banking77_subset(k=20, seed=0):
     remap = {old: new for new, old in enumerate(keep)}  # original label id -> 0..k-1
     options = [names[i].replace("_", " ") for i in keep]
 
-    def pick(split):
+    def pick(split: str) -> list[Example]:
         """Return the split's examples with labels remapped to 0..k-1."""
         return [
             {"text": r["text"], "label": remap[r["label"]]}

@@ -4,10 +4,17 @@ The prompt must end where the assistant's answer would begin, so that the next
 token the model predicts is an option letter.
 """
 
+from transformers import PreTrainedTokenizerBase
+
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # one token per label, so at most 26 options
 
 
-def build_prompt(tokenizer, state, question, options):
+def build_prompt(
+    tokenizer: PreTrainedTokenizerBase,
+    state: str,
+    question: str,
+    options: list[str],
+) -> str:
     """Build the chat prompt for one question.
 
     Args:
@@ -29,12 +36,14 @@ def build_prompt(tokenizer, state, question, options):
     )
     messages = [{"role": "user", "content": user}]
     # enable_thinking is read by Qwen3's template and ignored by others
-    return tokenizer.apply_chat_template(
+    prompt = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
     )
+    assert isinstance(prompt, str)
+    return prompt
 
 
-def option_ids(tokenizer, n):
+def option_ids(tokenizer: PreTrainedTokenizerBase, n: int) -> list[int]:
     """Return the token id of each option letter.
 
     Args:

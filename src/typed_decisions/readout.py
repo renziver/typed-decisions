@@ -1,10 +1,16 @@
 """Single forward pass that returns scores for the option letters."""
 
 import torch
+from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 
 @torch.no_grad()  # inference only; no gradient graph
-def option_scores(model, tokenizer, prompt, ids):
+def option_scores(
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
+    prompt: str,
+    ids: list[int],
+) -> tuple[torch.Tensor, float, list[str]]:
     """Score the option letters at the first answer position.
 
     The model produces logits over the whole vocabulary at every position. Only
@@ -31,7 +37,9 @@ def option_scores(model, tokenizer, prompt, ids):
         model(**enc).logits[0, -1].float()
     )  # last position, over the full vocabulary
     logp = torch.log_softmax(logits, dim=-1)
-    mass = logp[ids].exp().sum().item()  # total probability of the option letters
+    mass = float(
+        logp[ids].exp().sum().item()
+    )  # total probability of the option letters
     z = logits[ids].cpu()  # raw scores for the options only
-    top = [tokenizer.decode(i) for i in torch.topk(logits, 5).indices]
+    top = [str(tokenizer.decode(i)) for i in torch.topk(logits, 5).indices]
     return z, mass, top

@@ -11,7 +11,7 @@ model = AutoModelForCausalLM.from_pretrained(
     name,
     dtype=torch.bfloat16,
     device_map="cuda",  # older transformers versions call this torch_dtype
-).eval()
+).eval()  # type: ignore[no-untyped-call]
 
 options = ["billing", "bug", "account", "other"]
 prompt = build_prompt(

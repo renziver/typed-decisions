@@ -33,18 +33,24 @@ random.Random(0).shuffle(data)  # fixed shuffle; a raw split can be ordered by l
 tok = AutoTokenizer.from_pretrained(NAME)
 model = AutoModelForCausalLM.from_pretrained(
     NAME, dtype=torch.bfloat16, device_map="cuda"
-).eval()
+).eval()  # type: ignore[no-untyped-call]
 ids = option_ids(tok, len(options))  # token id of each option letter
 
-Z, M, Y = [], [], []  # option scores, option mass, true labels
+scores: list[np.ndarray] = []
+masses: list[float] = []
+labels: list[int] = []
 for ex in tqdm(data[:n]):
     prompt = build_prompt(tok, ex["text"], QUESTION, options)
     z, mass, _ = option_scores(model, tok, prompt, ids)
-    Z.append(z.numpy())
-    M.append(mass)
-    Y.append(ex["label"])
+    scores.append(z.numpy())
+    masses.append(mass)
+    labels.append(ex["label"])
 
-Z, M, Y = np.stack(Z), np.array(M), np.array(Y)  # shapes (n, k), (n,), (n,)
+Z, M, Y = (
+    np.stack(scores),
+    np.array(masses),
+    np.array(labels),
+)  # shapes (n, k), (n,), (n,)
 print(f"accuracy {np.mean(Z.argmax(1) == Y):.3f}   chance {1 / len(options):.3f}")
 print(
     f"mean option mass {M.mean():.3f}   share of prompts under 0.9: {(M < 0.9).mean():.2f}"
