@@ -2,6 +2,8 @@
 
 Get a typed decision out of a small LLM with a single forward pass.
 
+> **This is not a System One model.** "System One" models, such as TypeSafe AI's Jev, are purpose-built models that return a typed probability distribution over predefined answers in a single forward pass. This project is not one, and does not reproduce Jev or its training. It tries to get the same behaviour (a fast, typed, single-pass decision with probabilities) out of a general-purpose LLM, `Qwen3-1.7B`, by reading the option-letter logits. No weights are trained or modified, and nothing here has been benchmarked against Jev.
+
 A multiple-choice question is shown with lettered options, and the logits of the option letters at the first answer position are read directly. The result is a probability for every option instead of free text that has to be parsed. A temperature fitted on held-out data makes those probabilities trustworthy.
 
 ```python
@@ -19,6 +21,37 @@ d.option, d.probs, d.mass  # ("yes", [0.918, 0.082], ~1.0)
 ```
 
 `mass` is the total probability the model puts on the option letters before renormalising. Values well below 1 mean the prompt is not producing a letter.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph client["Client: typed_decisions"]
+        direction TB
+        in["state + question + options"] --> prompt["build_prompt: chat template, lettered options, ends at the answer start"]
+        post["softmax of option scores / T"] --> out["Decision: option, probs, mass"]
+    end
+
+    subgraph server["vLLM server (serve-model.sh), OpenAI-compatible /v1/completions"]
+        direction TB
+        tok["Tokenizer"] --> qwen["Qwen3-1.7B transformer stack, one forward pass, max_tokens=1"]
+        qwen --> head["LM head: logits over the full vocabulary"]
+        head --> lp["top-100 logprobs at the last position"]
+    end
+
+    prompt -->|"prompt string"| tok
+    lp -->|"logprobs"| pick["Pick the entries for the option-letter token ids A, B, C, ..."]
+    pick --> post
+
+    cal["calibrate.py: fit T on train scores"] -.->|"temperature.json"| post
+```
+
+Two scorers share the same prompt and the same readout, so `decide()` does not care which one it gets:
+
+- `VllmScorer` sends the prompt to the server above and reads the top-100 log-probabilities.
+- `TransformersScorer` runs the same model in-process and reads the raw logits of the option letters directly.
+
+There is **no classification head**. The model's own LM head already scores every token, and the readout keeps only the rows for the option letters. Nothing is trained; the only fitted parameter is the scalar temperature `T`, fitted offline on held-out train scores.
 
 ## How it works
 
