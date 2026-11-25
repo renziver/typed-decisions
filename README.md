@@ -113,7 +113,7 @@ The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) res
 
 500 test examples, 20 options (chance is 0.05). Temperature fitted on 1000 train examples.
 
-| | transformers |
+| | Qwen3-1.7B |
 |---|---|
 | Accuracy | 0.454 |
 | Mean option mass | 1.000 |
@@ -124,6 +124,10 @@ The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) res
 |---|---|---|
 | Raw softmax | 0.516 | 9.996 |
 | Temperature scaled | 0.066 | 2.075 |
+
+- **Temperature scaling** divides the logits by T before the softmax. T > 1 flattens the probabilities. It never changes which option is largest, so accuracy stays the same.
+- **ECE** (expected calibration error): predictions are bucketed by confidence, and the gap between each bucket's average confidence and its actual accuracy is averaged. 0 is perfect.
+- **NLL** (negative log-likelihood): the mean of `-log(probability given to the true option)`. Confident mistakes are punished hard. A uniform guess over 20 options scores ln 20 ≈ 3.0, so the raw 9.996 is worse than guessing and 2.075 is better.
 
 ## Limitations
 
