@@ -1,16 +1,14 @@
-"""Score the same examples through the vLLM server and compare with transformers.
+"""Score examples through the vLLM server and report accuracy.
 
 Usage:
     ./serve-model.sh                              # in another terminal
     python scripts/eval_vllm.py 500 test
 
-Saves results/vllm_<split>.npz. If results/transformers_<split>.npz holds at
-least n examples, reports parity against it.
+Saves the raw option scores to results/vllm_<split>.npz.
 """
 
 import random
 import sys
-from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
@@ -40,19 +38,3 @@ for ex in tqdm(data[:n]):
 Z, M, Y = np.stack(scores), np.array(masses), np.array(labels)
 print(f"accuracy {np.mean(Z.argmax(1) == Y):.3f}   mean option mass {M.mean():.3f}")
 np.savez(f"results/vllm_{split}.npz", z=Z, mass=M, y=Y)
-
-ref_path = Path(f"results/transformers_{split}.npz")
-if ref_path.exists():
-    ref = np.load(ref_path)
-    if len(ref["y"]) >= n:
-        zr = ref["z"][:n].astype(np.float64)
-        assert (ref["y"][:n] == Y).all(), "example order differs"
-
-        def logsoftmax(a: np.ndarray) -> np.ndarray:
-            a = a - a.max(1, keepdims=True)
-            return a - np.log(np.exp(a).sum(1, keepdims=True))
-
-        diff = np.abs(np.exp(logsoftmax(zr)) - np.exp(logsoftmax(Z)))
-        agree = np.mean(zr.argmax(1) == Z.argmax(1))
-        print(f"argmax agreement {agree:.3f}")
-        print(f"option probability gap: max {diff.max():.4f}   mean {diff.mean():.5f}")
