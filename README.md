@@ -24,6 +24,12 @@ d.option, d.probs, d.mass  # ("yes", [0.918, 0.082], ~1.0)
 
 `mass` is the total probability the model puts on the option letters before renormalising. Values well below 1 mean the prompt is not producing a letter.
 
+## Demo
+
+One question answered through the running vLLM server with `scripts/ask_vllm.py`:
+
+![Terminal recording of ask_vllm.py answering a yes/no question](docs/demo.gif)
+
 ## Architecture
 
 ```mermaid
