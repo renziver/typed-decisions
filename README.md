@@ -2,7 +2,7 @@
 
 Get a typed decision out of a small LLM with a single forward pass.
 
-> **This is not a System One model.** "System One" models, such as TypeSafe AI's Jev, are purpose-built models that return a typed probability distribution over predefined answers in a single forward pass. This project is not one, and does not reproduce Jev or its training. It tries to get the same behaviour (a fast, typed, single-pass decision with probabilities) out of a general-purpose LLM, `Qwen3-1.7B`, by reading the option-letter logits. No weights are trained or modified, and nothing here has been benchmarked against Jev.
+> **This is not a System One model.** "System One" models, such as [TypeSafe AI](https://typesafe.ai)'s Jev ([launch coverage](https://infoq.com/news/2026/10/typesafe-ai-jev-released)), are purpose-built models that return a typed probability distribution over predefined answers in a single forward pass. This project is not one, and does not reproduce Jev or its training. It tries to get the same behaviour (a fast, typed, single-pass decision with probabilities) out of a general-purpose LLM, [`Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B), by reading the option-letter logits. No weights are trained or modified, and nothing here has been benchmarked against Jev.
 
 > **Purely educational.** This is a personal learning project, built to understand single-pass LLM readouts, calibration and vLLM serving. It is not production software and is not intended for real decisions.
 
@@ -93,7 +93,7 @@ Fit the temperature on train scores and report calibration on test scores (write
 uv run python scripts/calibrate.py
 ```
 
-Score examples through the vLLM server:
+Score examples through the [vLLM](https://docs.vllm.ai) server:
 
 ```bash
 ./serve-model.sh                              # terminal 1, separate uv project in vllm-server/
