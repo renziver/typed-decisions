@@ -15,7 +15,7 @@ d = decide(
     ["yes", "no"],
     temperature=8.5,  # from scripts/calibrate.py
 )
-d.option, d.probs, d.mass   # ("yes", [0.918, 0.082], ~1.0)
+d.option, d.probs, d.mass  # ("yes", [0.918, 0.082], ~1.0)
 ```
 
 `mass` is the total probability the model puts on the option letters before renormalising. Values well below 1 mean the prompt is not producing a letter.
