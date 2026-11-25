@@ -64,6 +64,13 @@ Score the same examples through vLLM and compare with the transformers scores:
 uv run python scripts/eval_vllm.py 500 test   # terminal 2
 ```
 
+Ask the running server about a single input (uses the fitted temperature if `results/temperature.json` exists):
+
+```bash
+uv run python scripts/ask_vllm.py "The app crashed and I lost my order, I want my money back." \
+  -q "Is the customer asking for a refund?" -o yes -o no
+```
+
 The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) restricted to 20 intents (seeded sample), scored with `Qwen/Qwen3-1.7B`.
 
 ## Results
