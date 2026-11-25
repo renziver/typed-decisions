@@ -4,6 +4,8 @@ Get a typed decision out of a small LLM with a single forward pass.
 
 > **This is not a System One model.** "System One" models, such as TypeSafe AI's Jev, are purpose-built models that return a typed probability distribution over predefined answers in a single forward pass. This project is not one, and does not reproduce Jev or its training. It tries to get the same behaviour (a fast, typed, single-pass decision with probabilities) out of a general-purpose LLM, `Qwen3-1.7B`, by reading the option-letter logits. No weights are trained or modified, and nothing here has been benchmarked against Jev.
 
+> **Purely educational.** This is a personal learning project, built to understand single-pass LLM readouts, calibration and vLLM serving. It is not production software and is not intended for real decisions.
+
 A multiple-choice question is shown with lettered options, and the logits of the option letters at the first answer position are read directly. The result is a probability for every option instead of free text that has to be parsed. A temperature fitted on held-out data makes those probabilities trustworthy.
 
 ```python
@@ -25,25 +27,26 @@ d.option, d.probs, d.mass  # ("yes", [0.918, 0.082], ~1.0)
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph client["Client: typed_decisions"]
-        direction TB
-        in["state + question + options"] --> prompt["build_prompt: chat template, lettered options, ends at the answer start"]
-        post["softmax of option scores / T"] --> out["Decision: option, probs, mass"]
+flowchart LR
+    A["<b>Input</b><br/>state, question, options"] --> B["<b>build_prompt</b><br/>lettered options<br/>chat template"]
+
+    subgraph S["vLLM server"]
+        C["<b>Qwen3-1.7B</b><br/>one forward pass"] --> D["<b>LM head</b><br/>logits over<br/>the vocabulary"]
     end
 
-    subgraph server["vLLM server (serve-model.sh), OpenAI-compatible /v1/completions"]
-        direction TB
-        tok["Tokenizer"] --> qwen["Qwen3-1.7B transformer stack, one forward pass, max_tokens=1"]
-        qwen --> head["LM head: logits over the full vocabulary"]
-        head --> lp["top-100 logprobs at the last position"]
-    end
+    B --> C
+    D --> E["<b>Read option letters</b><br/>logprobs of A, B, C, ..."]
+    E --> F["<b>softmax / T</b>"]
+    F --> G["<b>Decision</b><br/>option, probs, mass"]
+    H["<b>calibrate.py</b><br/>fit T on train scores"] -.-> F
 
-    prompt -->|"prompt string"| tok
-    lp -->|"logprobs"| pick["Pick the entries for the option-letter token ids A, B, C, ..."]
-    pick --> post
-
-    cal["calibrate.py: fit T on train scores"] -.->|"temperature.json"| post
+    classDef client fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
+    classDef model fill:#ecfdf5,stroke:#059669,color:#064e3b
+    classDef offline fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-dasharray:4 3
+    class A,B,E,F,G client
+    class C,D model
+    class H offline
+    style S fill:none,stroke:#059669,stroke-dasharray:6 4
 ```
 
 Two scorers share the same prompt and the same readout, so `decide()` does not care which one it gets:
@@ -90,7 +93,7 @@ Fit the temperature on train scores and report calibration on test scores (write
 uv run python scripts/calibrate.py
 ```
 
-Score the same examples through vLLM and compare with the transformers scores:
+Score examples through the vLLM server:
 
 ```bash
 ./serve-model.sh                              # terminal 1, separate uv project in vllm-server/
@@ -110,10 +113,10 @@ The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) res
 
 500 test examples, 20 options (chance is 0.05). Temperature fitted on 1000 train examples.
 
-| | transformers | vLLM |
-|---|---|---|
-| Accuracy | 0.454 | 0.462 |
-| Mean option mass | 1.000 | 1.000 |
+| | transformers |
+|---|---|
+| Accuracy | 0.454 |
+| Mean option mass | 1.000 |
 
 **Calibration.** One fitted temperature (T = 8.5) leaves accuracy unchanged and fixes the confidence:
 
@@ -121,8 +124,6 @@ The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) res
 |---|---|---|
 | Raw softmax | 0.516 | 9.996 |
 | Temperature scaled | 0.066 | 2.075 |
-
-**vLLM parity.** The vLLM server reads the same prompt's top-100 log-probabilities. The two backends pick the same option on 96% of examples (480 of 500). The mean absolute gap in option probability is 0.003. The 20 disagreements sit at small logit margins (the median margin is 18.5), consistent with bf16 differences between the two kernels, not a prompt mismatch.
 
 ## Limitations
 
@@ -139,7 +140,7 @@ The test case is [Banking77](https://huggingface.co/datasets/mteb/banking77) res
 - `src/typed_decisions/backends.py`: `TransformersScorer` and `VllmScorer`
 - `src/typed_decisions/calibrate.py`: temperature scaling, ECE, NLL
 - `src/typed_decisions/decide.py`: `decide()` and the `Decision` result
-- `scripts/`: evaluation, calibration, vLLM parity and example scripts
+- `scripts/`: evaluation, calibration, vLLM and example scripts
 - `serve-model.sh`, `vllm-server/`: vLLM server, kept in its own project so its dependencies stay separate
 - `tests/`: unit tests that need no GPU
 
