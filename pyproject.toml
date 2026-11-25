@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "accelerate>=1.15.0",
     "datasets>=5.1.0",
+    "httpx>=0.28.1",
     "numpy>=2.5.4",
     "torch>=2.14.1",
     "tqdm>=4.70.1",
@@ -23,6 +24,8 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
     "types-tqdm>=4.70.0.20260906",
 ]
 
